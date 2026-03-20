@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "405473313790",
+    "project_id": "notasapp-e04da",
+    "storage_bucket": "notasapp-e04da.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:405473313790:android:8a089f902fe4843447b6af",
+        "android_client_info": {
+          "package_name": "com.anonymous.NotasApp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBNc7ILcJPNDRtci6tjKVwgk9Vy5uOgyd8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
