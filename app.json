@@ -18,7 +18,10 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Permitir que o NotasApp use sua localização para salvar onde a nota foi criada."
+      }
     },
     "android": {
       "package": "com.matheus.mariotto.NotasApp",
@@ -61,7 +64,12 @@
       ],
       "expo-localization",
       "expo-notifications",
-      "expo-location"
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Permitir que o NotasApp use sua localização para salvar onde a nota foi criada."
+        }
+      ]
     ],
     "extra": {
       "eas": {
@@ -74,3 +82,5 @@
     }
   }
 }
+
+
