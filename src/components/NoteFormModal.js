@@ -2,10 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Modal, StyleSheet, Alert } from 'react-native';
 import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
+import { useTranslation } from 'react-i18next';
+import * as Location from 'expo-location';
+import { notificarNotaCriada, prepararLocalizacao } from '../services/notifications';
 
 export default function NoteFormModal({ visible, onClose, notaEditando }) {
+  const { t } = useTranslation();
   const [titulo, setTitulo] = useState('');
   const [conteudo, setConteudo] = useState('');
+  const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
     if (notaEditando) {
@@ -19,27 +24,56 @@ export default function NoteFormModal({ visible, onClose, notaEditando }) {
 
   const handleSalvar = async () => {
     if (!titulo.trim() || !conteudo.trim()) {
-      Alert.alert('Erro', 'Preencha título e conteúdo.');
+      Alert.alert(t('erro'), t('preenchaTituloConteudo'));
       return;
     }
+
+    setSalvando(true);
+
     try {
       if (notaEditando) {
+        // Editando: não mexe na localização nem dispara notificação
         await updateDoc(doc(db, 'notas', notaEditando.id), {
           titulo: titulo.trim(),
           conteudo: conteudo.trim(),
           atualizadoEm: serverTimestamp(),
         });
       } else {
+        // Nova nota: tenta pegar a localização atual
+        let latitude = null;
+        let longitude = null;
+
+        try {
+          const permitido = await prepararLocalizacao();
+          if (permitido) {
+            const pos = await Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.Balanced,
+            });
+            latitude = pos.coords.latitude;
+            longitude = pos.coords.longitude;
+          }
+        } catch (locErr) {
+          console.log('Não foi possível obter localização:', locErr);
+        }
+
         await addDoc(collection(db, 'notas'), {
           titulo: titulo.trim(),
           conteudo: conteudo.trim(),
           userId: auth.currentUser.uid,
           criadoEm: serverTimestamp(),
+          latitude,
+          longitude,
         });
+
+        // Dispara a notificação só ao criar (não ao editar)
+        notificarNotaCriada();
       }
+
       onClose();
     } catch (error) {
-      Alert.alert('Erro', error.message);
+      Alert.alert(t('erro'), error.message);
+    } finally {
+      setSalvando(false);
     }
   };
 
@@ -47,26 +81,30 @@ export default function NoteFormModal({ visible, onClose, notaEditando }) {
     <Modal visible={visible} animationType="slide" transparent>
       <View style={styles.overlay}>
         <View style={styles.modal}>
-          <Text style={styles.titulo}>{notaEditando ? 'Editar Nota' : 'Nova Nota'}</Text>
+          <Text style={styles.titulo}>{notaEditando ? t('editarNota') : t('novaNota')}</Text>
           <TextInput
             style={styles.input}
-            placeholder="Título"
+            placeholder={t('titulo')}
             value={titulo}
             onChangeText={setTitulo}
           />
           <TextInput
             style={[styles.input, styles.textArea]}
-            placeholder="Conteúdo"
+            placeholder={t('conteudo')}
             value={conteudo}
             onChangeText={setConteudo}
             multiline
             numberOfLines={5}
           />
-          <TouchableOpacity style={styles.botao} onPress={handleSalvar}>
-            <Text style={styles.botaoTexto}>Salvar</Text>
+          <TouchableOpacity
+            style={[styles.botao, salvando && { opacity: 0.6 }]}
+            onPress={handleSalvar}
+            disabled={salvando}
+          >
+            <Text style={styles.botaoTexto}>{t('salvar')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={onClose}>
-            <Text style={styles.cancelar}>Cancelar</Text>
+          <TouchableOpacity onPress={onClose} disabled={salvando}>
+            <Text style={styles.cancelar}>{t('cancelar')}</Text>
           </TouchableOpacity>
         </View>
       </View>
