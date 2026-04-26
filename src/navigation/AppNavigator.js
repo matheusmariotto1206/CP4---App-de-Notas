@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import { Alert } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
+import { notificarBoasVindas, prepararLocalizacao, prepararNotificacoesLocais } from '../services/notifications';
 
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
@@ -13,12 +15,38 @@ const Stack = createNativeStackNavigator();
 export default function AppNavigator() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const usuarioAnteriorRef = useRef(null);
+  const permissoesPreparadasRef = useRef(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+    const unsubscribe = onAuthStateChanged(auth, async (usuario) => {
+      const eraDeslogado = usuarioAnteriorRef.current === null;
+      const agoraEstaLogado = usuario !== null;
+
+      setUser(usuario);
       setLoading(false);
+
+      // Só dispara boas-vindas se foi LOGIN REAL (transição null -> user)
+      if (eraDeslogado && agoraEstaLogado && !permissoesPreparadasRef.current) {
+        permissoesPreparadasRef.current = true;
+
+        // Prepara permissões em sequência (notificação + localização)
+        await prepararNotificacoesLocais();
+        await prepararLocalizacao();
+
+        // Boas-vindas
+        Alert.alert('Bem-vindo!', 'Login realizado com sucesso.');
+        await notificarBoasVindas();
+      }
+
+      // Reset ao deslogar
+      if (!usuario) {
+        permissoesPreparadasRef.current = false;
+      }
+
+      usuarioAnteriorRef.current = usuario;
     });
+
     return unsubscribe;
   }, []);
 
