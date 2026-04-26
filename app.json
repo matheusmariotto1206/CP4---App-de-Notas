@@ -8,10 +8,20 @@
     "scheme": "notasapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "updates": {
+      "enabled": false,
+      "checkAutomatically": "ON_ERROR_RECOVERY"
+    },
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
     "ios": {
       "supportsTablet": true
     },
     "android": {
+      "package": "com.matheus.mariotto.NotasApp",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -19,7 +29,17 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "NOTIFICATIONS"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyAL_cwgJIeFVtIqwaVYU0WFrlTHgVZ4MXw"
+        }
+      }
     },
     "web": {
       "output": "static",
@@ -38,8 +58,16 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "expo-localization",
+      "expo-notifications",
+      "expo-location"
     ],
+    "extra": {
+      "eas": {
+        "projectId": "2cb0d340-6531-4cce-ad98-2dcd0f6b6453"
+      }
+    },
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
