@@ -23,6 +23,7 @@ import { auth, db } from '../firebaseConfig';
 import NoteFormModal from '../components/NoteFormModal';
 import NoteDetailsModal from '../components/NoteDetailsModal';
 import { useTranslation } from 'react-i18next';
+import { registrarNotificacoes, notificarBoasVindas } from '../services/notifications';
 
 export default function HomeScreen({ navigation }) {
   const { t, i18n } = useTranslation();
@@ -35,6 +36,23 @@ export default function HomeScreen({ navigation }) {
   const [notaEditando, setNotaEditando] = useState(null);
   const [detalhesVisible, setDetalhesVisible] = useState(false);
   const [notaDetalhes, setNotaDetalhes] = useState(null);
+
+  // 🔔 Pede permissão e dispara boas-vindas ao abrir a Home
+  useEffect(() => {
+    (async () => {
+      try {
+        const ok = await registrarNotificacoes();
+        console.log('[NOTIF] permissão concedida?', ok);
+        if (ok) {
+          const nome = auth.currentUser?.displayName || auth.currentUser?.email || '';
+          await notificarBoasVindas(nome);
+          console.log('[NOTIF] boas-vindas disparada');
+        }
+      } catch (e) {
+        console.log('[NOTIF] erro boas-vindas:', e);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     const onLanguageChanged = (lng) => {
@@ -193,10 +211,10 @@ export default function HomeScreen({ navigation }) {
       </TouchableOpacity>
 
       <NoteFormModal
-  visible={modalVisible}
-  onClose={() => setModalVisible(false)}
-  notaEditando={notaEditando}
-  />
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        notaEditando={notaEditando}
+      />
 
       <NoteDetailsModal
         visible={detalhesVisible}

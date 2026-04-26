@@ -6,7 +6,8 @@ import { useTranslation } from 'react-i18next';
 export default function NoteDetailsModal({ visible, onClose, nota }) {
   const { t } = useTranslation();
 
-  if (!nota) return null;
+  if (!nota) return null; console.log('NOTA:', nota.titulo, '| lat:', nota.latitude, '| lng:', nota.longitude);
+
 
   const temCoordenadas =
     typeof nota.latitude === 'number' && typeof nota.longitude === 'number';

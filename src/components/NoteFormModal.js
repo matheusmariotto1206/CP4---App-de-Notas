@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Modal, StyleSheet, Alert } from 'react-native';
 import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
@@ -8,103 +8,108 @@ import { notificarNotaCriada, prepararLocalizacao } from '../services/notificati
 
 export default function NoteFormModal({ visible, onClose, notaEditando }) {
   const { t } = useTranslation();
-  const [titulo, setTitulo] = useState('');
-  const [conteudo, setConteudo] = useState('');
+  const [titulo, setTitulo] = useState(notaEditando?.titulo || '');
+  const [conteudo, setConteudo] = useState(notaEditando?.conteudo || '');
   const [salvando, setSalvando] = useState(false);
 
-  useEffect(() => {
-    if (notaEditando) {
-      setTitulo(notaEditando.titulo);
-      setConteudo(notaEditando.conteudo);
-    } else {
-      setTitulo('');
-      setConteudo('');
-    }
+  React.useEffect(() => {
+    setTitulo(notaEditando?.titulo || '');
+    setConteudo(notaEditando?.conteudo || '');
   }, [notaEditando, visible]);
 
-  const handleSalvar = async () => {
-    if (!titulo.trim() || !conteudo.trim()) {
-      Alert.alert(t('erro'), t('preenchaTituloConteudo'));
+  const obterCoordenadas = async () => {
+    const ok = await prepararLocalizacao();
+    console.log('[LOC] prepararLocalizacao =>', ok);
+    if (!ok) return { latitude: null, longitude: null };
+
+    try {
+      const atual = await Promise.race([
+        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000)),
+      ]).catch(async (err) => {
+        console.log('[LOC] getCurrentPosition falhou:', err.message, '-> tentando lastKnown');
+        return await Location.getLastKnownPositionAsync();
+      });
+
+      if (atual?.coords) {
+        console.log('[LOC] coords:', atual.coords.latitude, atual.coords.longitude);
+        return { latitude: atual.coords.latitude, longitude: atual.coords.longitude };
+      }
+      console.log('[LOC] sem coords disponíveis');
+      return { latitude: null, longitude: null };
+    } catch (e) {
+      console.log('[LOC] erro obterCoordenadas:', e);
+      return { latitude: null, longitude: null };
+    }
+  };
+
+  const salvar = async () => {
+    if (!titulo.trim()) {
+      Alert.alert('Erro', 'Digite um título');
       return;
     }
-
+    if (salvando) return;
     setSalvando(true);
 
     try {
-      if (notaEditando) {
-        // Editando: não mexe na localização nem dispara notificação
-        await updateDoc(doc(db, 'notas', notaEditando.id), {
-          titulo: titulo.trim(),
-          conteudo: conteudo.trim(),
-          atualizadoEm: serverTimestamp(),
-        });
+      let dados = {
+        titulo: titulo.trim(),
+        conteudo: conteudo.trim(),
+        userId: auth.currentUser.uid,
+      };
+
+      if (notaEditando?.id) {
+        await updateDoc(doc(db, 'notas', notaEditando.id), dados);
       } else {
-        // Nova nota: tenta pegar a localização atual
-        let latitude = null;
-        let longitude = null;
-
-        try {
-          const permitido = await prepararLocalizacao();
-          if (permitido) {
-            const pos = await Location.getCurrentPositionAsync({
-              accuracy: Location.Accuracy.Balanced,
-            });
-            latitude = pos.coords.latitude;
-            longitude = pos.coords.longitude;
-          }
-        } catch (locErr) {
-          console.log('Não foi possível obter localização:', locErr);
-        }
-
-        await addDoc(collection(db, 'notas'), {
-          titulo: titulo.trim(),
-          conteudo: conteudo.trim(),
-          userId: auth.currentUser.uid,
-          criadoEm: serverTimestamp(),
+        const { latitude, longitude } = await obterCoordenadas();
+        dados = {
+          ...dados,
           latitude,
           longitude,
-        });
-
-        // Dispara a notificação só ao criar (não ao editar)
-        notificarNotaCriada();
+          criadoEm: serverTimestamp(),
+        };
+        await addDoc(collection(db, 'notas'), dados);
+        await notificarNotaCriada(dados.titulo);
       }
 
+      setTitulo('');
+      setConteudo('');
       onClose();
-    } catch (error) {
-      Alert.alert(t('erro'), error.message);
+    } catch (e) {
+      console.log('[SAVE] erro:', e);
+      Alert.alert('Erro', 'Não foi possível salvar a nota.');
     } finally {
       setSalvando(false);
     }
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.overlay}>
         <View style={styles.modal}>
-          <Text style={styles.titulo}>{notaEditando ? t('editarNota') : t('novaNota')}</Text>
+          <Text style={styles.titulo}>
+            {notaEditando ? 'Editar nota' : 'Nova nota'}
+          </Text>
+
           <TextInput
             style={styles.input}
-            placeholder={t('titulo')}
+            placeholder="Título"
             value={titulo}
             onChangeText={setTitulo}
           />
           <TextInput
             style={[styles.input, styles.textArea]}
-            placeholder={t('conteudo')}
+            placeholder="Conteúdo"
             value={conteudo}
             onChangeText={setConteudo}
             multiline
-            numberOfLines={5}
           />
-          <TouchableOpacity
-            style={[styles.botao, salvando && { opacity: 0.6 }]}
-            onPress={handleSalvar}
-            disabled={salvando}
-          >
-            <Text style={styles.botaoTexto}>{t('salvar')}</Text>
+
+          <TouchableOpacity style={styles.botao} onPress={salvar} disabled={salvando}>
+            <Text style={styles.botaoTexto}>{salvando ? 'Salvando...' : 'Salvar'}</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={onClose} disabled={salvando}>
-            <Text style={styles.cancelar}>{t('cancelar')}</Text>
+          <TouchableOpacity onPress={onClose}>
+            <Text style={styles.cancelar}>Cancelar</Text>
           </TouchableOpacity>
         </View>
       </View>
