@@ -2,30 +2,33 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
+import { useTranslation } from 'react-i18next';
 
 export default function LoginScreen({ navigation }) {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
 
   const handleLogin = async () => {
     if (!email || !senha) {
-      Alert.alert('Erro', 'Preencha todos os campos.');
+      Alert.alert(t('erro'), t('preenchaCampos'));
       return;
     }
     try {
       await signInWithEmailAndPassword(auth, email, senha);
-      Alert.alert('Sucesso', 'Login realizado com sucesso!');
+      // NÃO chame navigation.replace('Home') aqui!
+      // O AppNavigator troca a stack automaticamente via onAuthStateChanged.
     } catch (error) {
-      Alert.alert('Erro ao entrar', error.message);
+      Alert.alert(t('erroEntrar'), error.message);
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.titulo}>Login</Text>
+      <Text style={styles.titulo}>{t('login')}</Text>
       <TextInput
         style={styles.input}
-        placeholder="Email"
+        placeholder={t('email')}
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
@@ -33,16 +36,16 @@ export default function LoginScreen({ navigation }) {
       />
       <TextInput
         style={styles.input}
-        placeholder="Senha"
+        placeholder={t('senha')}
         value={senha}
         onChangeText={setSenha}
         secureTextEntry
       />
       <TouchableOpacity style={styles.botao} onPress={handleLogin}>
-        <Text style={styles.botaoTexto}>Entrar</Text>
+        <Text style={styles.botaoTexto}>{t('entrar')}</Text>
       </TouchableOpacity>
       <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-        <Text style={styles.link}>Não tem conta? Cadastre-se</Text>
+        <Text style={styles.link}>{t('semConta')}</Text>
       </TouchableOpacity>
     </View>
   );
